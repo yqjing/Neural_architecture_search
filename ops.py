@@ -14,6 +14,7 @@ import wandb
 import os
 import copy
 import time
+import random
 
 class Op(torch.nn.Module):
     """ 
@@ -119,7 +120,7 @@ class Sep_Conv(Op):
         self.relu = nn.ReLU(inplace=True)
         self.out_channels = num_channels
 
-    def forward(self, inputs):
+    def forward(self, inputs):  
         x = self.conv_d(inputs)
         x = self.conv_p(x)
         x = self.bn(x)
@@ -149,6 +150,11 @@ class Conv(Op):
                 self.conv = nn.LazyConv2d(num_channels, kernel_size=kernel, stride=strides, padding="same")
             else:
                 self.conv = nn.LazyConv2d(num_channels, kernel_size=kernel, stride=strides, padding=17)
+        if kernel == 5:
+            if strides == 1:
+                self.conv = nn.LazyConv2d(num_channels, kernel_size=kernel, stride=strides, padding="same")
+            else:
+                self.conv = nn.LazyConv2d(num_channels, kernel_size=kernel, stride=strides, padding=18)        
         elif kernel == (1, 7):
             if strides == 1:
                 self.conv = nn.LazyConv2d(num_channels, kernel_size=kernel, stride=strides, padding="same")
@@ -223,13 +229,13 @@ class Pooling(Op):
             if strides == 1:
                 self.pool = nn.MaxPool2d(size, strides, padding = int(np.floor(size / 2)))
             else:
-                self.pad = nn.ZeroPad2d(17)
+                self.pad = nn.ZeroPad2d(16)
                 self.pool = nn.MaxPool2d(size, strides, padding = 1)
         elif type == "average":
             if strides == 1:
                 self.pool = nn.AvgPool2d(size, strides, padding = int(np.floor(size / 2)))
             else:
-                self.pad = nn.ZeroPad2d(17)
+                self.pad = nn.ZeroPad2d(16)
                 self.pool = nn.AvgPool2d(size, strides, padding = 1)
         self.out_channels = in_channels
     
@@ -294,11 +300,17 @@ class Dil_Conv(Op):
 # op_2 = Sep_Conv(op_1.out_channels, 64, 5, 2)
 # x = op_2(x)
 
+# print(x.shape)
+
 # op_3 = Identity(128, 2)
 # x = op_3(x)
 
-# op_4 = Pooling(op_3.out_channels, "max", 2)
+# print(x.shape)
+
+# op_4 = Pooling(op_3.out_channels, "average", 2)
 # x = op_4(x)
+
+# print(x.shape)
 
 # op_5 = Dil_Conv(op_4.out_channels, 128, 1)
 # x = op_5(x)
