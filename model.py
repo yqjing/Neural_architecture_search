@@ -165,7 +165,7 @@ class Cell(Op):
          print(f"For Cell {self.cell_idx} | the Resolution of the image is 32 * 32 | the channel size is {self.num_channels} | the number of blocks are {self.num_blocks}.")
          print("The summary of the block is")
          block_fake = copy.deepcopy(self.cell[1])
-         print(summary(block_fake, (self.num_channels, 32, 32)))
+         print(summary(block_fake, (int(self.num_channels), 32, 32)))
          
 # # testing 
 # ed = [300, 3, ["identity", "3*3 avgpool", "1*7-7*1 conv", "5*5 dconv"]]

@@ -1,5 +1,6 @@
 # from model import Block, Cell, Cell_input, Net
 from model import *
+import sys
 
 
 action_ls_full = ["identity", "3*3 dconv",  "5*5 dconv", "3*3 conv", "5*5 conv", "1*7-7*1 conv", "3*3 dil conv", "3*3 maxpool", "3*3 avgpool"]
@@ -95,6 +96,19 @@ if __name__ == "__main__":
     # print the summary for the individual net
     net_1.net_summary()
     summary(net_1, (3, 32, 32))
+
+    def capture_summary(net, input_size, filename):
+        original_stdout = sys.stdout
+        with open(filename, 'w') as f:
+            sys.stdout = f  
+            net.net_summary()
+            summary(net, input_size)
+        sys.stdout = original_stdout  
+
+    # print the network summary
+    capture_summary(net_1, (3, 32, 32), 'network_summary.txt')
+
+
 
 
 
