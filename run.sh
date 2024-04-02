@@ -9,8 +9,9 @@
 #SBATCH --mail-type=end,fail   
 
 module load anaconda3
-cd ~/project2/examples/benchmarks_dynamic/incremental/
-python3 main.py
+python3 mini_gen.py
+
+
 
 
 
