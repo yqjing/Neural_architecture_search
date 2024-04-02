@@ -2,7 +2,8 @@ from ops import *
 # from ops import Identity, Sep_Conv, Conv, Stacked_conv, Pooling, Dil_Conv, Op 
 from torchsummary import summary
 
-class Block(Op):
+from utils import *
+class Block(torch.nn.Module):
     """ 
     Block object that inherits the Op
     """
@@ -123,7 +124,7 @@ class Block(Op):
 # print(y2.shape)
 
 
-class Cell(Op):
+class Cell(torch.nn.Module):
     """ 
     Cell that builds on the Op object. Cell is composed of Blocks. 
 
@@ -166,6 +167,12 @@ class Cell(Op):
          print("The summary of the block is")
          block_fake = copy.deepcopy(self.cell[1])
          print(summary(block_fake, (self.num_channels, 32, 32)))
+
+    def mutate(self):
+        block_index = random.randint(0, len(self.cell)-1)
+        block_to_mutate = self.cell[block_index]
+        block_to_mutate = normal_ed_generator(0.5)
+
          
 # # testing 
 # ed = [300, 3, ["identity", "3*3 avgpool", "1*7-7*1 conv", "5*5 dconv"]]
@@ -175,7 +182,7 @@ class Cell(Op):
 # print(c.cell_summary())
 # print(y.shape)
 
-class Cell_input(Op):
+class Cell_input(torch.nn.Module):
     """ 
     Cell that builds on the Op object. Cell is composed of Blocks. 
 
@@ -217,69 +224,5 @@ class Cell_input(Op):
          block_fake = copy.deepcopy(self.cell[0])
          print(summary(block_fake, (3, 32, 32)))
          
-# # testing
-# ed = [np.inf, 1, ["identity", "5*5 dconv", "3*3 conv"]]
-# c = Cell_input(0, ed)
-# x = torch.randn(32, 3, 32, 32)
-# y = c(x)
-# print(y.shape)
-# c.cell_summary()
-
-
-class Net(Op):
-    """ 
-    Net object that inherits the Op that is the next level of Cell
-    """
-    def __init__(self, net_encoding):
-        assert len(net_encoding) == 5, "the number of cell in an individual must be 5"
-        super().__init__()
-        self.net_ed = net_encoding
-        self.post_process_layer = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)), 
-                                                nn.Flatten(),
-                                                nn.LazyLinear(10),
-                                                nn.Softmax(dim=1))
-        self.build_net()
-
-    def build_net(self):
-        self.net = nn.ModuleList([])
-        cell_0 = Cell_input(0, self.net_ed[0])
-        cell_1 = Cell(1, self.net_ed[1])
-        cell_2 = Cell(2, self.net_ed[2])
-        cell_3 = Cell(3, self.net_ed[3])
-        cell_4 = Cell(4, self.net_ed[4])
-
-        self.net.append(cell_0)
-        self.net.append(cell_1)
-        self.net.append(cell_2)
-        self.net.append(cell_3)
-        self.net.append(cell_4)
-
-    def forward(self, inputs):
-        x = inputs
-        for cell in self.net:
-            x = cell(x)
-        output = self.post_process_layer(x)
-        return output
-    
-    def net_summary(self):
-        for cell in self.net:
-            cell.cell_summary()
-            print("\n")
-        print("Plus the post processing layer.\n")
-
-
-
-
-
-        
-
-
-
-
-
-
-
-
-
 
 
