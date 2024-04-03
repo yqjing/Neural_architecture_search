@@ -8,7 +8,7 @@ import copy
 import random
 kernel_sizes = [3, 5, 7]
 strides = [1, 2]
-in_channels_options = [32, 64] 
+in_channels_options = [32, 64]
 num_channels_options = [32, 64, 128]
 
 conv_combinations = [
@@ -80,8 +80,8 @@ def full_ed_generator(random_pre):
     ----------
 
     random_pre : float
-        [0, 1], 
-        if randomly chosen probability random_p > random_pre, 
+        [0, 1],
+        if randomly chosen probability random_p > random_pre,
         assign "identity" operation to the first position of the action list
 
     Variables in the encoding of a cell
@@ -92,7 +92,7 @@ def full_ed_generator(random_pre):
     num_channel : int
         randomly chosen from the list [24, 40, 64, 80, 128, 256]
     action_list : List[str]
-        a list of string, e.g. ["identity", "3*3 avgpool", "1*7-7*1 conv"], 
+        a list of string, e.g. ["identity", "3*3 avgpool", "1*7-7*1 conv"],
         randomly initialized.
 
     """
