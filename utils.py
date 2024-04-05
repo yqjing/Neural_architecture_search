@@ -66,6 +66,8 @@ def normal_ed_generator(random_pre):
     if random_p >= random_pre:
         ed_input.append('identity')
         del action_ls[0]
+    else:
+        del action_ls[0]
     num_ls = [2, 3, 4]
     num_actions = random.choice(num_ls)
     len_remain = num_actions - len(ed_input)
@@ -98,12 +100,12 @@ def full_ed_generator(random_pre):
     """
 
     net_ed = []
-    channel_list = [24, 40, 64, 80, 128, 256]
+    channel_list = [24, 40, 64, 80, 128]
     ed_cell_0 = [np.inf, 1, input_ed_generator(random_pre)]
     ed_cell_1 = [random.choice(channel_list), 1, normal_ed_generator(random_pre)]
-    ed_cell_2 = [random.choice(channel_list), 2, normal_ed_generator(random_pre)]
-    ed_cell_3 = [random.choice(channel_list), 3, normal_ed_generator(random_pre)]
-    ed_cell_4 = [random.choice(channel_list), 4, normal_ed_generator(random_pre)]
+    ed_cell_2 = [random.choice(channel_list), 1, normal_ed_generator(random_pre)]
+    ed_cell_3 = [random.choice(channel_list), 1, normal_ed_generator(random_pre)]
+    ed_cell_4 = [random.choice(channel_list), 1, normal_ed_generator(random_pre)]
 
     net_ed.append(ed_cell_0)
     net_ed.append(ed_cell_1)

@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from model import *
+from utils import *
 
 
 class Network(Op):
@@ -75,7 +76,7 @@ class Network(Op):
         optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
 
         for epoch in range(epochs):
-            for inputs, labels in DataLoader(train_data, batch_size=64, shuffle=True):
+            for inputs, labels in DataLoader(train_data, batch_size=65, shuffle=True):
                 inputs, labels = inputs.to(self.device), labels.to(self.device)
                 optimizer.zero_grad()
                 outputs = self.model(inputs)
