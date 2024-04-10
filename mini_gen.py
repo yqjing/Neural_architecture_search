@@ -5,14 +5,16 @@ from torch.utils.data import Subset
 import numpy as np
 from model import *
 from gpu import get_gpu_status
+import ssl
 
+ssl._create_default_https_context = ssl._create_stdlib_context
 
 def initialize_population(size=15, device = 'cpu'):
     """Initialize a population of networks."""
     population = [Network(net_encoding=full_ed_generator(0.5), device = device) for _ in range(size)]
     return population
 
-def evaluate_fitness(node, train_data, validation_data, epoch = 20, device ='cpu', save=True):
+def evaluate_fitness(node, validation_data, device ='cpu', save=True):
     """Evaluate the fitness of a node by training and then measuring performance."""
     # node.train(train_data, epochs=epoch, device = device)
     performance_score = node.evaluate_node(validation_data, device = device)
@@ -20,8 +22,8 @@ def evaluate_fitness(node, train_data, validation_data, epoch = 20, device ='cpu
       node.update_performance(performance_score)
     return performance_score
 
-def model_train(node, train_data, epoch = 10, device = 'cpu'):
-    node.train(train_data, epochs = 1, device = device)
+def model_train(node, train_data, epoch, device = 'cpu'):
+    node.train(train_data, epoch , device = device)
 
 
 def select_population(population, to_keep=5):
@@ -126,30 +128,20 @@ def select_data_subsets(train_data, N_h = 10, K=6):
     random_classes = random.sample(label_classes, K)
 
     train = []
-    label_to_be_selected = {i: 100 for i in random_classes}
+    label_to_be_selected = {i: N_h for i in random_classes}
     while sum(list(label_to_be_selected.values())) > 0:
-        random_index = int(np.random.random()*len(dataset))
+        random_index = random.randint(0, len(dataset) - 1)
         element = dataset[random_index]
         if element[1] in list(label_to_be_selected.keys()) and label_to_be_selected[element[1]] > 0:
             label_to_be_selected[element[1]] -= 1
             train.append(element)
 
-    # test = []
-    # label_to_be_selected = [10]*10
-    # selected = 0
-    # while selected<=sum(label_to_be_selected):
-    #     random_index = int(np.random.random()*len(dataset))
-    #     element = dataset[random_index]
-    #     label_to_be_selected[element[1]]-=1
-    #     test.append(element)
-    #     selected += 1
-
     test = []
-    label_to_be_selected = [10]*10
+    label_to_be_selected = [N_h]*10
     selected = 0
     while selected<=sum(label_to_be_selected):
-        random_index = int(np.random.random()*len(train))
-        element = train[random_index]
+        random_index = random.randint(0, len(dataset) - 1)
+        element = dataset[random_index]
         label_to_be_selected[element[1]]-=1
         test.append(element)
         selected += 1
@@ -159,7 +151,7 @@ def select_data_subsets(train_data, N_h = 10, K=6):
 
     return train_subset, val_subset
 
-def genetic_algorithm(train_data, validation_data, generations=2000, population_size=10, to_keep=3, subset_size=100, train_epoches = 20, device = 'cpu', load=False):
+def genetic_algorithm(train_data, validation_data, generations=2000, population_size=15, to_keep=7, subset_size=30, train_epoches = 20, device = 'cpu', load=False):
     if load == False:
         population = initialize_population(size=population_size, device = device)
     else:
@@ -167,21 +159,35 @@ def genetic_algorithm(train_data, validation_data, generations=2000, population_
         best_id = [Network(ed, device = device) for ed in best_id_ed]
         population = crossover_and_mutate(best_id, available_ops=available_ops, population_size=population_size, to_keep=to_keep, device = device)
         print("population loaded")
+    best_average_accuracy_across_generation = 0
     
+    best_child_across_generation = population[0]
+    best_child_across_generation_copy = population[0]
+    best_child_epoches = 0
     for generation in tqdm(range(generations)):
         print(f"Generation {generation + 1}")
-
+        best_child = population[0]
+        best_child2 = population[0]
         test_performances = []
         i = 0
+        best_child_average_performance_without_decay = 0
+        best_child_average_performance = 0
+        train_subset, test_subset = select_data_subsets(train_data, subset_size)
+
         for node in tqdm(population):
-            train_subset, test_subset = select_data_subsets(train_data)
-            for e in range(train_epoches):
-                # train_subset, _ = select_data_subsets(train_data)
-                model_train(node, train_subset)
-            performance_score = evaluate_fitness(node, train_subset, test_subset, train_epoches, device)
+            model_train(node, train_subset, epoch=train_epoches)
+
+            performance_score = evaluate_fitness(node, test_subset, device)
+
             test_performances.append(performance_score)
             #print(f"training on node {i}, performance {performance_score}")
             i+=1
+            if node.average_performance_without_decay>=best_child_average_performance_without_decay:
+                best_child_average_performance_without_decay = node.average_performance_without_decay
+                best_child = node
+            if node.average_performance>=best_child_average_performance:
+                best_child_average_performance = node.average_performance
+                best_child2 = node
 
         print(f"Finish Generation {generation}")
         avg_test_performance = sum(test_performances) / len(test_performances)
@@ -190,31 +196,48 @@ def genetic_algorithm(train_data, validation_data, generations=2000, population_
         best_child_test_score = test_performances[best_child_index]
 
         print(f"Average performance on test subset: {avg_test_performance}")
+
         print(f"Best child's performance on test subset: {best_child_test_score}")
+        if best_child_average_performance_without_decay>=best_average_accuracy_across_generation:
+            best_average_accuracy_across_generation = best_child_average_performance_without_decay
+            best_child_epoches = generation
+
+        print(f"Best child's average performance: {best_child_average_performance_without_decay}")
+
+        
         # print(f"Best child's performance on validation subset{evaluate_fitness(best_child, train_data, validation_data, 10, device, save=False)}")     
         # if generation % 10 == 0:
         #     print(f"Best child's structure: {summary(best_child, (3, 32, 32))}")
         if generation % 10 == 0:
             print(f"Best individual net at generation {generation} is\n", best_child.net_ed)
-        if generation % 20 == 0 and generation != 0:
-            train_data, validation_data, _ = load_cifar10_data() 
+            print(f"Best child's average performance across generation is:{best_average_accuracy_across_generation} which appear in generation {best_child_epoches}")
+        
+        if generation % 50 == 0 and generation != 0:
             best_child.train(train_data, epochs=10, device = device)
+            best_child2.train(train_data, epochs=10, device = device)
             acc = best_child.evaluate_node(validation_data, device = device)
-            print(f"The performance of the best individual at generation {generation} is\n", acc)
-        if generation % 7 == 0:
-            print(get_gpu_status(device))
-        
+            acc2 = best_child2.evaluate_node(validation_data, device = device)
+            real_acc = best_child_across_generation.evaluate_node(validation_data, device = device)
+            real_acc_cpy = best_child_across_generation_copy.evaluate_node(validation_data, device = device)
+            if acc>=real_acc:
+                best_child_across_generation = best_child
+                best_child_across_generation_copy = copy.deepcopy(best_child)
 
-        selected = select_population(population, to_keep=to_keep)
-        best_ed = [i.net_ed for i in selected]
-        torch.save(best_ed, "saved_encodings/best_ed_100.pkl")
-        # population = crossover_and_mutate(selected, available_ops=available_ops, population_size=population_size, to_keep=to_keep, device = device)
+            print(f"The performance of the best individual with decay at generation {generation} is\n", acc)
+            print(f"The performance of the best individual no dacay at generation {generation} is\n", acc2)
+            print(f"Best Accuracy\n", real_acc)
+            print(f"Best accuracy using the copied node\n", real_acc_cpy)
+            
         
-        best_id_ed = torch.load("saved_encodings/best_ed_100.pkl")
-        best_id = [Network(ed, device = device) for ed in best_id_ed]
-        population = crossover_and_mutate(best_id, available_ops=available_ops, population_size=population_size, to_keep=to_keep, device = device)
+        selected = select_population(population, to_keep=to_keep)
+        population = crossover_and_mutate(selected, available_ops=available_ops, population_size=population_size, to_keep=to_keep, device = device)
 
 if __name__ == "__main__":
+    print(f"PyTorch Version: {torch.__version__}")
+    print(f"CUDA Available: {torch.cuda.is_available()}")
+    if torch.cuda.is_available():
+        print(f"CUDA Version: {torch.version.cuda}")
+        print(f"Device Name: {torch.cuda.get_device_name(0)}")
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f'Using device: {device}')
     train_data, validation_data, _ = load_cifar10_data() 

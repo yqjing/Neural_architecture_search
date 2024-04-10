@@ -28,6 +28,7 @@ class Network(Op):
         self.learning_rate = learning_rate
         self.device = device
         self.assemble_model()
+        self.age = 0
 
     def assemble_model(self):
         """Assembles the neural network model."""
@@ -35,6 +36,7 @@ class Network(Op):
 
     def update_performance(self, new_score):
         self.performance_history.append(new_score)
+        self.age+=1
 
     def build_net(self):
         self.net = nn.ModuleList([])
@@ -68,7 +70,16 @@ class Network(Op):
         """Calculate the average performance of the node."""
         if not self.performance_history:
             return 0
-        return sum(self.performance_history) / len(self.performance_history)
+        last_performances = self.performance_history[-10:]
+        return (0.99**(self.age))*sum(last_performances) / len(last_performances)
+
+    @property
+    def average_performance_without_decay(self):
+        """Calculate the average performance of the node."""
+        if not self.performance_history:
+            return 0
+        last_performances = self.performance_history[-10:]
+        return sum(last_performances) / len(last_performances)
 
     def train(self, train_data, epochs=20, device='cpu'):
         self.model.train()
@@ -98,7 +109,6 @@ class Network(Op):
                 correct += (predicted == labels).sum().item()
 
         accuracy = correct / total
-        self.performance_history.append(accuracy)
         return accuracy
 
         
